@@ -1,1 +1,94 @@
 
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ela Tiramisu</title>
+<style>
+body{font-family:Arial;background:#f7f2ee;margin:0;color:#2b211b}
+header{background:#5a3826;color:white;padding:22px;text-align:center}
+main{max-width:700px;margin:20px auto;padding:0 14px}
+.card{background:white;border-radius:14px;padding:16px;margin:12px 0}
+.item{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #eee}
+.qty{display:flex;align-items:center;gap:10px}
+.qty button{width:38px;height:38px;border:0;border-radius:8px;background:#5a3826;color:white;font-size:20px}
+.qty span{min-width:25px;text-align:center}
+input,textarea{box-sizing:border-box;width:100%;padding:12px;border:1px solid #ccc;border-radius:9px;margin:6px 0 14px;font-size:16px}
+.submit{width:100%;padding:14px;border:0;border-radius:10px;background:#5a3826;color:white;font-size:18px}
+#msg{margin-top:12px;padding:10px}
+</style>
+</head>
+<body>
+<header><h1>Ela Tiramisu</h1><div>طلب الجملة</div></header>
+<main>
+<div class="card">
+<h2 id="client">مرحبًا</h2>
+<p>الأسعار خاصة ولا تظهر هنا.</p>
+</div>
+
+<div class="card">
+<h2>اختر الأصناف</h2>
+<div id="items"></div>
+</div>
+
+<div class="card">
+<label>رقم الهاتف</label>
+<input id="phone" type="tel" placeholder="رقم الهاتف">
+
+<label>ملاحظات (اختياري)</label>
+<textarea id="notes" rows="3" placeholder="أي ملاحظات على الطلب"></textarea>
+
+<button class="submit" onclick="sendOrder()">إرسال الطلب</button>
+<div id="msg"></div>
+</div>
+</main>
+
+<script>
+const client=new URLSearchParams(location.search).get("client")||"عميل";
+document.getElementById("client").textContent="مرحبًا "+client;
+
+const types=["Classique","Pistache","Oreo","Kinder","Lotus","Chocolat"];
+const qty={};
+types.forEach(t=>qty[t]=0);
+
+document.getElementById("items").innerHTML=types.map(t=>`
+<div class="item">
+<b>${t}</b>
+<div class="qty">
+<button onclick="change('${t}',-1)">−</button>
+<span id="q-${t}">0</span>
+<button onclick="change('${t}',1)">+</button>
+</div>
+</div>`).join("");
+
+function change(t,n){
+qty[t]=Math.max(0,qty[t]+n);
+document.getElementById("q-"+t).textContent=qty[t];
+}
+
+async function sendOrder(){
+const phone=document.getElementById("phone").value.trim();
+const notes=document.getElementById("notes").value.trim();
+const items=types.filter(t=>qty[t]>0).map(t=>({type:t,qty:qty[t]}));
+const msg=document.getElementById("msg");
+
+if(!phone){msg.textContent="يرجى إدخال رقم الهاتف.";return}
+if(!items.length){msg.textContent="اختر صنفًا واحدًا على الأقل.";return}
+
+try{
+const r=await fetch("/orders",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({client,phone,notes,items})
+});
+const data=await r.json();
+if(!r.ok)throw new Error();
+msg.textContent="تم إرسال الطلب بنجاح. رقم الطلب: "+data.id;
+}catch(e){
+msg.textContent="حدث خطأ أثناء إرسال الطلب.";
+}
+}
+</script>
+</body>
+</html>
