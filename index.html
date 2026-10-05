@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Ela Tiramisu - Admin</title>
+<style>body{font-family:Arial;background:#f5f1ed;margin:0;color:#2b211b}header{background:#5a3826;color:#fff;padding:20px;text-align:center}main{max-width:1100px;margin:20px auto;padding:0 12px}.card{background:#fff;border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 2px 10px #0001}table{width:100%;border-collapse:collapse}th,td{padding:8px;border-bottom:1px solid #eee;text-align:right}input{padding:8px;border:1px solid #ccc;border-radius:7px;width:100px}button{border:0;padding:9px 12px;border-radius:8px;background:#5a3826;color:#fff;margin:3px;cursor:pointer}.green{background:#dff5e4;color:#176b2b;padding:5px 8px;border-radius:15px}.red{background:#ffdede;color:#9b1717;padding:5px 8px;border-radius:15px}</style></head>
+<body><header><h1>Ela Tiramisu — لوحة الإدارة</h1></header><main><div id="list"></div></main>
+<script>
+const API=localStorage.getItem("ELA_API_URL")||"";
+async function load(){
+ if(!API){list.innerHTML='<div class="card">ضع عنوان الخادم في localStorage باسم ELA_API_URL.</div>';return}
+ const r=await fetch(API+"/orders"); const a=await r.json();
+ list.innerHTML=a.length?a.map(o=>{let total=o.items.reduce((s,i)=>s+(Number(o.prices[i.type])||0)*i.qty,0);
+ return `<div class="card"><b>طلب #${o.id} — ${o.client}</b><p>📞 ${o.phone}</p>
+ <table><tr><th>النوع</th><th>الكمية</th><th>سعر الوحدة</th></tr>${o.items.map(i=>`<tr><td>${i.type}</td><td>${i.qty}</td><td><input id="p-${o.id}-${i.type}" value="${o.prices[i.type]??''}"></td></tr>`).join("")}</table>
+ <p><b>الإجمالي: ${total.toFixed(2)} CHF</b></p>
+ <span class="${o.payment==="paid"?"green":"red"}">${o.payment==="paid"?"تم الدفع":"لم يتم الدفع"}</span>
+ <button onclick="save('${o.id}','paid')">تأكيد تم الدفع</button><button onclick="save('${o.id}','unpaid')">لم يتم الدفع</button>
+ <button onclick="save('${o.id}',o.payment,o.status==='ready'?'new':'ready')">${o.status==='ready'?'إرجاع جديد':'جاهز'}</button>
+ </div>`}).join(""):'<div class="card">لا توجد طلبات.</div>';
+}
+async function save(id,payment,status){
+ const r=await fetch(API+"/orders");const a=await r.json();const o=a.find(x=>x.id===id);let prices={};
+ o.items.forEach(i=>{prices[i.type]=document.getElementById(`p-${id}-${i.type}`).value});
+ await fetch(API+"/orders/"+id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({payment,status,prices})});load();
+}
+load();setInterval(load,5000);
+</script></body></html>
